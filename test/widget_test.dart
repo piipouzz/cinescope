@@ -72,6 +72,10 @@ void main() {
   testWidgets('Chargement, catalogue pastel et reconstruction sans requête', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final completer = Completer<List<Movie>>();
     final service = FakeTmdbService(() => completer.future);
     addTearDown(service.dispose);
@@ -118,6 +122,85 @@ void main() {
     container.read(themeProvider.notifier).setThemeMode(ThemeMode.system);
     await tester.pumpAndSettle();
     expect(service.calls, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final width in [390.0, 599.0, 600.0, 800.0, 900.0, 1200.0, 1440.0]) {
+    testWidgets('Catalogue responsive à $width pixels sans débordement', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final service = FakeTmdbService(
+        () async => List.generate(
+          8,
+          (index) => Movie.fromJson({
+            'id': index,
+            'title': 'Un très long titre de film pour tester les cartes $index',
+            'vote_average': 8.2,
+            'release_date': '2026-10-09',
+          }),
+        ),
+      );
+      addTearDown(service.dispose);
+      await tester.pumpWidget(createApp(service));
+      await tester.pumpAndSettle();
+      if (width < 600) {
+        expect(find.byType(ListView), findsOneWidget);
+        expect(find.byType(GridView), findsNothing);
+      } else {
+        expect(find.byType(ListView), findsNothing);
+        final grid = tester.widget<GridView>(find.byType(GridView));
+        final delegate =
+            grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+        expect(
+          delegate.crossAxisCount,
+          width >= 1200 ? 4 : (width >= 900 ? 3 : 2),
+        );
+        expect(
+          tester.widget<MovieCard>(find.byType(MovieCard).first).isGrid,
+          isTrue,
+        );
+      }
+      expect(find.text('CinéScope'), findsOneWidget);
+      expect(find.text('8.2 / 10'), findsWidgets);
+      expect(find.text('Sortie : 09/10/2026'), findsWidgets);
+      final poster = find.descendant(
+        of: find.byType(MovieCard).first,
+        matching: find.byType(AspectRatio),
+      );
+      final posterSize = tester.getSize(poster);
+      expect(posterSize.width / posterSize.height, closeTo(2 / 3, 0.001));
+      expect(tester.takeException(), isNull);
+      expect(service.calls, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('Redimensionner le catalogue conserve les données sans requête', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = FakeTmdbService(() async => [movie]);
+    addTearDown(service.dispose);
+    tester.view.physicalSize = const Size(390, 844);
+    await tester.pumpWidget(createApp(service));
+    await tester.pumpAndSettle();
+    expect(find.byType(ListView), findsOneWidget);
+    for (final width in [800.0, 1000.0, 1400.0, 390.0]) {
+      tester.view.physicalSize = Size(width, 900);
+      await tester.pumpAndSettle();
+      expect(find.byType(width < 600 ? ListView : GridView), findsOneWidget);
+      expect(find.text('Le Voyage'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(service.calls, 1);
+    }
     await tester.pumpWidget(const SizedBox.shrink());
   });
 

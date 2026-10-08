@@ -13,17 +13,25 @@ class HomePage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = ShadTheme.of(context);
+    final horizontalPadding = MediaQuery.sizeOf(context).width < 600
+        ? 16.0
+        : 24.0;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 800),
+            constraints: const BoxConstraints(maxWidth: 1200),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    24,
+                    horizontalPadding,
+                    16,
+                  ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 20,
@@ -65,7 +73,12 @@ class HomePage extends ConsumerWidget {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    8,
+                    horizontalPadding,
+                    16,
+                  ),
                   child: Row(
                     children: [
                       Expanded(
@@ -139,11 +152,39 @@ class HomePage extends ConsumerWidget {
             detail: 'Revenez bientôt pour de nouvelles découvertes.',
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-          itemCount: movies.length,
-          itemBuilder: (context, index) =>
-              MovieCard(key: ValueKey(movies[index].id), movie: movies[index]),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            if (width < 600) {
+              return ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                itemCount: movies.length,
+                itemBuilder: (context, index) => MovieCard(
+                  key: ValueKey(movies[index].id),
+                  movie: movies[index],
+                ),
+              );
+            }
+            final columns = width >= 1200 ? 4 : (width >= 900 ? 3 : 2);
+            final cardWidth = (width - 48 - 20 * (columns - 1)) / columns;
+            final posterHeight = (cardWidth - 34) * 3 / 2;
+            final textScaler = MediaQuery.textScalerOf(context);
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                crossAxisSpacing: 20,
+                mainAxisSpacing: 20,
+                mainAxisExtent: posterHeight + 32 + textScaler.scale(160),
+              ),
+              itemCount: movies.length,
+              itemBuilder: (context, index) => MovieCard(
+                key: ValueKey(movies[index].id),
+                movie: movies[index],
+                isGrid: true,
+              ),
+            );
+          },
         );
       },
     );
