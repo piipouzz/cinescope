@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../models/movie.dart';
@@ -101,21 +102,36 @@ class MovieCard extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.only(bottom: isGrid ? 0 : 20),
-      child: ShadCard(
-        padding: const EdgeInsets.all(16),
-        child: isGrid
-            ? Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [poster, const SizedBox(height: 16), information],
-              )
-            : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(width: 88, child: poster),
-                  const SizedBox(width: 16),
-                  Expanded(child: information),
-                ],
-              ),
+      child: Semantics(
+        button: true,
+        label: 'Voir la fiche de ${movie.title}',
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(24),
+            onTap: () => context.push('/movie/${movie.id}', extra: movie),
+            child: ShadCard(
+              padding: const EdgeInsets.all(16),
+              child: isGrid
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        poster,
+                        const SizedBox(height: 16),
+                        information,
+                      ],
+                    )
+                  : Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(width: 88, child: poster),
+                        const SizedBox(width: 16),
+                        Expanded(child: information),
+                      ],
+                    ),
+            ),
+          ),
+        ),
       ),
     );
   }

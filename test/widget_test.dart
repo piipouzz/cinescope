@@ -8,6 +8,7 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'package:cinescope/app/cinescope_app.dart';
 import 'package:cinescope/models/movie.dart';
+import 'package:cinescope/pages/movie_detail_page.dart';
 import 'package:cinescope/providers/movie_provider.dart';
 import 'package:cinescope/providers/theme_provider.dart';
 import 'package:cinescope/services/tmdb_service.dart';
@@ -232,6 +233,172 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Aucun film trouvé, miaou !'), findsOneWidget);
     expect(find.byType(MovieCard), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final width in [390.0, 800.0]) {
+    testWidgets('Navigation vers le film choisi et retour à $width pixels', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final selected = Movie.fromJson({
+        'id': 99,
+        'title': 'Le film choisi',
+        'overview': 'Un voyage au cœur des montagnes.',
+        'poster_path': '/test.jpg',
+        'release_date': '2026-10-09',
+        'vote_average': 7.8,
+      });
+      final service = FakeTmdbService(() async => [selected, movie]);
+      addTearDown(service.dispose);
+      await tester.pumpWidget(createApp(service));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey(99)));
+      await tester.pumpAndSettle();
+      final page = tester.widget<MovieDetailPage>(find.byType(MovieDetailPage));
+      expect(page.movie, same(selected));
+      expect(find.text('Le film choisi'), findsOneWidget);
+      expect(find.text(selected.overview), findsOneWidget);
+      expect(find.text('Sortie : 09/10/2026'), findsOneWidget);
+      expect(find.text('7.8 / 10'), findsOneWidget);
+      final poster = tester.widget<Image>(
+        find.byWidgetPredicate(
+          (widget) => widget is Image && widget.image is NetworkImage,
+        ),
+      );
+      expect(
+        (poster.image as NetworkImage).url,
+        'https://image.tmdb.org/t/p/w500/test.jpg',
+      );
+      expect(poster.semanticLabel, 'Affiche de Le film choisi');
+      expect(tester.takeException(), isNull);
+      expect(service.calls, 1);
+      await tester.tap(find.text('Retour'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MovieDetailPage), findsNothing);
+      expect(find.byType(width < 600 ? ListView : GridView), findsOneWidget);
+      expect(find.byType(MovieCard), findsNWidgets(2));
+      expect(service.calls, 1);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('Le retour conserve la position du catalogue', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final service = FakeTmdbService(
+      () async => List.generate(
+        20,
+        (index) => Movie.fromJson({'id': index, 'title': 'Film $index'}),
+      ),
+    );
+    addTearDown(service.dispose);
+    await tester.pumpWidget(createApp(service));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.byKey(const ValueKey(10)), 200);
+    await Scrollable.ensureVisible(
+      tester.element(find.byKey(const ValueKey(10))),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position;
+    final offset = position.pixels;
+    expect(offset, greaterThan(0));
+    await tester.tap(find.byKey(const ValueKey(10)));
+    await tester.pumpAndSettle();
+    expect(find.byType(MovieDetailPage), findsOneWidget);
+    await tester.tap(find.text('Retour'));
+    await tester.pumpAndSettle();
+    expect(position.pixels, offset);
+    expect(find.text('Film 10'), findsOneWidget);
+    expect(service.calls, 1);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  for (final extra in [null, 'objet incorrect']) {
+    testWidgets('La fiche sans Movie valide reste accessible ($extra)', (
+      tester,
+    ) async {
+      final service = FakeTmdbService(() async => [movie]);
+      addTearDown(service.dispose);
+      await tester.pumpWidget(createApp(service));
+      await tester.pumpAndSettle();
+      GoRouter.of(tester.element(find.byType(MovieCard)))
+          .go('/movie/42', extra: extra);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Film indisponible.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('Retour'));
+      await tester.pumpAndSettle();
+      expect(find.byType(MovieCard), findsOneWidget);
+      expect(service.calls, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  for (final width in [320.0, 800.0]) {
+    testWidgets('Synopsis complet et données absentes à $width pixels', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      final synopsis =
+          '${List.filled(40, 'Une longue aventure à travers les montagnes et les océans.').join('\n\n')}\nFin du synopsis.';
+      final service = FakeTmdbService(
+        () async => [
+          Movie.fromJson({
+            'id': 55,
+            'title': 'Un film avec un très long synopsis',
+            'overview': synopsis,
+          }),
+        ],
+      );
+      addTearDown(service.dispose);
+      await tester.pumpWidget(createApp(service));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(MovieCard));
+      await tester.pumpAndSettle();
+      expect(find.text('Affiche indisponible'), findsOneWidget);
+      expect(find.text('Date de sortie indisponible'), findsOneWidget);
+      final synopsisWidget = tester.widget<Text>(find.text(synopsis));
+      expect(synopsisWidget.maxLines, isNull);
+      expect(synopsisWidget.data, endsWith('Fin du synopsis.'));
+      final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+      expect(scrollable.position.maxScrollExtent, greaterThan(1000));
+      scrollable.position.jumpTo(scrollable.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.text(synopsis)).bottom,
+        lessThanOrEqualTo(900),
+      );
+      expect(tester.takeException(), isNull);
+      expect(service.calls, 1);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
+
+  testWidgets('Un synopsis absent est signalé dans la fiche', (tester) async {
+    final service = FakeTmdbService(() async => [movie]);
+    addTearDown(service.dispose);
+    await tester.pumpWidget(createApp(service));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(MovieCard));
+    await tester.pumpAndSettle();
+    expect(find.text('Synopsis indisponible.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
