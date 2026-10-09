@@ -153,11 +153,3 @@ les licences, les erreurs réseau et le maintien des données existantes.
 La position est obtenue à la demande. Le calcul de distance s’effectue dans
 l’application ; la recherche « Autour de moi » transmet le centre de la zone
 de recherche à Overpass. Aucun historique de positions n’est enregistré.
-
-## Git
-
-Le dépôt possède déjà un historique des fonctionnalités Films/TMDB/Riverpod.
-Les fonctionnalités Cinémas/GPS, leurs tests et cette documentation restent
-à committer. Exclure les clés, `tmdb.env.json`, les sorties de compilation et
-la configuration VS Code contenant un chemin propre à la machine.
-
