@@ -395,7 +395,12 @@ void main() {
     addTearDown(service.dispose);
     await tester.pumpWidget(createApp(service));
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(MovieCard));
+    await tester.tap(
+      find.descendant(
+        of: find.byType(MovieCard),
+        matching: find.byType(AspectRatio),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Synopsis indisponible.'), findsOneWidget);
     expect(tester.takeException(), isNull);
