@@ -15,6 +15,7 @@ dependencies:
   http: ^1.6.0
   shadcn_ui: ^0.57.1
   flutter_riverpod: ^3.4.3
+  geolocator: ^14.1.1
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +26,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/cat_mascot.png
+    - assets/data/cinemas_osm.json

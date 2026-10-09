@@ -90,23 +90,6 @@ class HomePage extends ConsumerWidget {
                           ),
                         ),
                       ),
-                      ExcludeSemantics(
-                        child: Row(
-                          children: [
-                            Icon(
-                              LucideIcons.sparkles,
-                              size: 18,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 10),
-                            Icon(
-                              LucideIcons.heart,
-                              size: 18,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
